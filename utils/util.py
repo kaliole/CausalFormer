@@ -32,6 +32,11 @@ def prepare_device(n_gpu_use):
     """
     n_gpu = torch.cuda.device_count()
     if n_gpu_use > 0 and n_gpu == 0:
+        # Try MPS (Apple Silicon) before falling back to CPU
+        if torch.backends.mps.is_available():
+            print("No CUDA GPU available. Using Apple MPS device.")
+            device = torch.device('mps')
+            return device, []
         print("Warning: There\'s no GPU available on this machine,"
               "training will be performed on CPU.")
         n_gpu_use = 0

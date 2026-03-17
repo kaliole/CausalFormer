@@ -43,7 +43,7 @@ def load_model(path, args, name='Causality Detecting', run_id=None):
     model = model.to(device)
     if len(device_ids) > 1:
         model = torch.nn.DataParallel(model, device_ids=device_ids)
-    checkpoint = torch.load(checkpoint_path)
+    checkpoint = torch.load(checkpoint_path, weights_only=False)
     model.load_state_dict(checkpoint['state_dict'])
     return model, config, data_loader
     
