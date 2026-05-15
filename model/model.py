@@ -245,7 +245,11 @@ class MultiVariateCausalAttention(BaseModel):
     
     def regularization(self):
         return torch.mean(torch.norm(self.mask, dim=-1, p=1))
-    
+
+    def diagonal_regularization(self):
+        n = self.series_num
+        return torch.mean(self.mask[:, range(n), range(n)] ** 2)
+
     def relprop(self, rel):
         rel_A, rel_v = self.mul.relprop(rel)
         self.save_rel(rel_A)
@@ -350,6 +354,9 @@ class MultiHeadAttention(BaseModel):
     def regularization(self):
         return self.attention.regularization() + self.Wv.regularization()
 
+    def diagonal_regularization(self):
+        return self.attention.diagonal_regularization()
+
     def relprop(self, rel):
         rel = self.w_concat.relprop(rel)
         rel = rel.reshape(-1, self.series_num * self.input_window, self.n_head * self.feature_dim)
@@ -438,7 +445,10 @@ class EncoderLayer(BaseModel):
 
     def regularization(self):
         return self.attention.regularization()
-    
+
+    def diagonal_regularization(self):
+        return self.attention.diagonal_regularization()
+
     def relprop(self, rel):
         rel = self.norm2.relprop(rel)
         rel = self.dropout2.relprop(rel)
@@ -506,6 +516,12 @@ class Encoder(BaseModel):
         loss = 0
         for layer in self.layers:
             loss += layer.regularization()
+        return loss/len(self.layers)
+
+    def diagonal_regularization(self):
+        loss = 0
+        for layer in self.layers:
+            loss += layer.diagonal_regularization()
         return loss/len(self.layers)
 
     def relprop(self, rel):
@@ -591,7 +607,10 @@ class PredictModel(BaseModel):
     
     def regularization(self):
         return self.encoder.regularization()
-    
+
+    def diagonal_regularization(self):
+        return self.encoder.diagonal_regularization()
+
     def relprop(self, rel):
         pad = torch.zeros((rel.shape[0],self.input_window-self.output_window,rel.shape[2],rel.shape[3])).to(self.device)
         rel = torch.cat((pad,rel),1)
