@@ -20,15 +20,6 @@ Base commit: `19a1b62` ([feat] add dataset files)
 **What:** Added `weights_only=False` to `torch.load()` calls.
 **Why:** PyTorch 2.6 changed the default of `weights_only` from `False` to `True`. CausalFormer saves `ConfigParser` objects inside checkpoints, which requires `weights_only=False` to deserialize.
 
-### 2026-05-06 — Add diagonal regularization for self-loop suppression experiment
-**File(s):** `model/model.py`, `trainer/trainer.py`, `train.py`
-**What:** Added two optional self-loop suppression mechanisms to the attention mask:
-- *Soft penalty* (`diag_lam` config key): adds an L2 penalty on the diagonal entries of `MultiVariateCausalAttention.mask` during training, discouraging but not forbidding self-loops. New `diagonal_regularization()` method chain propagates up through `MultiHeadAttention`, `EncoderLayer`, `Encoder`, and `PredictModel`.
-- *Hard block* (`diagonal_block: "hard"` config key): zeroes the mask diagonal at init and registers a gradient hook that zeroes diagonal gradients on every backward pass, preventing the model from learning self-loop attention weights.
-
-`Trainer.__init__` gains a `diag_lam=0` parameter; `train.py` reads both `diag_lam` and `diagonal_block` from the trainer config section.
-**Why:** Thesis experiment to test whether forcing the model away from autoregressive self-loops improves cross-variable causal discovery quality. Both treatments are optional (default behaviour is unchanged when neither key is set).
-
 ### 2026-03-17 — Add Apple MPS device support
 **File(s):** `utils/util.py`
 **What:** Added MPS (Apple Silicon GPU) as a fallback in `prepare_device()` when CUDA is unavailable but `n_gpu > 0`.

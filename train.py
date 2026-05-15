@@ -34,21 +34,6 @@ def main(config):
     # prepare for (multi-device) GPU training
     device, device_ids = prepare_device(config['n_gpu'])
     model = model.to(device)
-
-    if config['trainer'].get('diagonal_block') == 'hard':
-        for layer in model.encoder.layers:
-            mask_param = layer.attention.attention.mask
-            n = mask_param.shape[1]
-            with torch.no_grad():
-                idx = torch.arange(n)
-                mask_param.data[:, idx, idx] = 0.0
-            def _zero_diag_grad(grad, n=n):
-                grad = grad.clone()
-                idx = torch.arange(n)
-                grad[:, idx, idx] = 0.0
-                return grad
-            mask_param.register_hook(_zero_diag_grad)
-
     if len(device_ids) > 1:
         model = torch.nn.DataParallel(model, device_ids=device_ids)
 
@@ -61,7 +46,6 @@ def main(config):
     optimizer = config.init_obj('optimizer', torch.optim, trainable_params)
     lr_scheduler = config.init_obj('lr_scheduler', torch.optim.lr_scheduler, optimizer)
     lam = config['trainer']['lam']
-    diag_lam = config['trainer'].get('diag_lam', 0)
 
     trainer = Trainer(model, criterion, metrics, optimizer,
                       config=config,
@@ -69,8 +53,7 @@ def main(config):
                       data_loader=data_loader,
                       valid_data_loader=valid_data_loader,
                       lr_scheduler=lr_scheduler,
-                      lam=lam,
-                      diag_lam=diag_lam)
+                      lam = lam)
 
     trainer.train()
 
